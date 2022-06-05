@@ -37,9 +37,11 @@ const csvWriter = createCsvWriter({
 
       const hotels = await page.evaluate((i) => {
         const d = [];
-        const pms = document.querySelectorAll("#search_results_table h3 > a");
+        const container = document.querySelectorAll(
+          "#search_results_table h3 > a"
+        );
 
-        pms.forEach((element) => {
+        container.forEach((element) => {
           const hotelName = element.querySelector(
             ":scope > div:nth-child(1)"
           ).innerHTML;
