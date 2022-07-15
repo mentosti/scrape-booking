@@ -7,6 +7,7 @@ const csvWriter = createCsvWriter({
   path: "hcm_hotels_comments.csv",
   header: [
     { id: "id", title: "#" },
+    { id: "hotelId", title: "Id" },
     { id: "name", title: "Name" },
     { id: "nationality", title: "Nationality" },
     { id: "roomType", title: "Room Type" },
@@ -15,6 +16,7 @@ const csvWriter = createCsvWriter({
     { id: "generalReview", title: "General Review" },
     { id: "reviewScore", title: "Review Score" },
     { id: "reviewDate", title: "Review Date" },
+    { id: "photo", title: "Photo" },
     { id: "likeReview", title: "Like Review" },
     { id: "dislikeReview", title: "Dislike Review" },
   ],
@@ -37,14 +39,130 @@ const readCsv = async () => {
   });
 };
 
+const getComments = async (i, j, page) => {
+  return page.evaluate(
+    (i, j) => {
+      const container = document.querySelectorAll(
+        "#review_list_page_container .review_list > li"
+      );
+
+      var comments = [];
+
+      container.forEach((reviewer) => {
+        const name = reviewer.querySelector(
+          ".bui-avatar-block__title"
+        ).textContent;
+
+        const nationalityElement = reviewer.querySelector(
+          ".bui-avatar-block__subtitle"
+        );
+        const nationality = nationalityElement
+          ? nationalityElement.textContent.match(/\n+ +\n+ +(.+)/)[1]
+          : "";
+
+        const roomTypeElement = reviewer.querySelector(
+          ".c-review-block__room-link .bui-list__body"
+        );
+        const roomType = roomTypeElement
+          ? roomTypeElement.textContent.match(/\n+(.+)\n+/)[1]
+          : "";
+
+        const losElement = reviewer.querySelector(
+          "ul.c-review-block__stay-date li:first-child .bui-list__body"
+        );
+        const los = losElement
+          ? losElement.textContent
+              .match(/\n(.+)\n\n.+\n\n/)[1]
+              .replace(" · ", "")
+          : "";
+
+        const travellerTypeElement = reviewer.querySelector(
+          ".review-panel-wide__traveller_type"
+        );
+        const travellerType = travellerTypeElement
+          ? travellerTypeElement.textContent.match(/\n+(.+)\n+/)[1]
+          : "";
+
+        const generalReviewElement = reviewer.querySelector("h3");
+        const generalReview = generalReviewElement
+          ? generalReviewElement.textContent.match(/\n+(.+)\n+/)[1]
+          : "";
+
+        const scoreElement = reviewer.querySelector(".bui-review-score__badge");
+        const score = scoreElement
+          ? scoreElement.textContent.replaceAll(" ", "")
+          : "";
+
+        const dateElement = reviewer.querySelector(
+          ".c-review-block__row > .c-review-block__date"
+        );
+        const date = dateElement
+          ? dateElement.textContent.match(/\nĐã đánh giá: (.+)\n/)[1]
+          : "";
+
+        const photo =
+          reviewer.querySelector("ul.c-review-block__photos") == null
+            ? "No"
+            : "Yes";
+
+        const reviews = reviewer.querySelectorAll(".c-review .c-review__row");
+
+        let likeReview = "";
+        let dislikeReview = "";
+
+        if (
+          (reviews.length === 2 &&
+            reviews[1].querySelector("a.c-review__translation-link") == null) ||
+          reviews.length === 3
+        ) {
+          likeReview = reviews[0]
+            .querySelector(".c-review__body")
+            .textContent.replaceAll("\n", " ");
+          dislikeReview = reviews[1]
+            .querySelector(".c-review__body")
+            .textContent.replaceAll("\n", " ");
+        } else {
+          const comment = reviews[0]
+            .querySelector(".c-review__body")
+            .textContent.replaceAll("\n", ", ");
+          if (reviews[0].className.includes("lalala")) {
+            dislikeReview = comment;
+          } else {
+            likeReview = comment;
+          }
+        }
+
+        comments.push({
+          id: j++,
+          hotelId: i,
+          name,
+          nationality,
+          roomType,
+          los,
+          travellerType,
+          generalReview,
+          reviewScore: score,
+          reviewDate: date,
+          photo,
+          likeReview,
+          dislikeReview,
+        });
+      });
+
+      return comments;
+    },
+    i,
+    j
+  );
+};
+
 (async () => {
   const urls = await readCsv();
-  const data = [];
-
+  var j = 1;
   const browser = await puppeteer.launch();
 
-  for (i = 1; i <= urls.length; i++) {
-    console.log("Crawling hotel: " + i);
+  for (i = 350; i <= urls.length; i++) {
+    const data = [];
     const page = await browser.newPage();
 
     await page.setUserAgent(
@@ -52,87 +170,46 @@ const readCsv = async () => {
     );
 
     await page.goto(urls[i - 1]);
-
-    try {
-      await page.waitForSelector("#review_list_page_container", {
-        visible: true,
-      });
-
-      const hotel = await page.evaluate((i) => {
-        const container = document.querySelectorAll(
-          "#review_list_page_container .review_list > li"
-        );
-
-        container.forEach((reviewer) => {
-          const name = reviewer.querySelector(
-            ".bui-avatar-block__title"
-          ).textContent;
-          const nationality = reviewer
-            .querySelector(".bui-avatar-block__subtitle")
-            .textContent.match(/\n+ +\n+ +(.+)/)[1];
-          const roomType = reviewer
-            .querySelector(".c-review-block__room-link .bui-list__body")
-            .textContent.match(/\n+(.+)\n+/)[1];
-          const los = reviewer
-            .querySelector(
-              "ul.c-review-block__stay-date li:first-child .bui-list__body"
-            )
-            .textContent.match(/\n(.+)\n\n.+\n\n/)[1]
-            .replace(" · ", "");
-          const travellerType = reviewer
-            .querySelector(".review-panel-wide__traveller_type")
-            .textContent.match(/\n+(.+)\n+/)[1];
-          const generalReview = reviewer
-            .querySelector("h3")
-            .textContent.match(/\n+(.+)\n+/)[1];
-          const score = reviewer
-            .querySelector(".bui-review-score__badge")
-            .textContent.replaceAll(" ", "");
-          const date = reviewer
-            .querySelector(".c-review-block__row > .c-review-block__date")
-            .textContent.match(/\nĐã đánh giá: (.+)\n/)[1];
-
-          const reviews = reviewer.querySelectorAll(".c-review .c-review__row");
-          let likeReview = "";
-          let dislikeReview = "";
-          if (reviews.length === 2) {
-            likeReview =
-              reviews[0].querySelector(".c-review__body").textContent;
-            dislikeReview =
-              reviews[1].querySelector(".c-review__body").textContent;
-          } else {
-            const comment =
-              reviews[0].querySelector(".c-review__body").textContent;
-            if (reviews[0].className.includes("lalala")) {
-              dislikeReview = comment;
-            } else {
-              likeReview = comment;
-            }
-          }
+    var pageNumber = 1;
+    do {
+      console.log("Crawling hotel: " + i);
+      console.log("Crawling comment page: " + pageNumber);
+      try {
+        await page.waitForSelector("#review_list_page_container", {
+          visible: true,
         });
 
-        return {
-          id: i,
-          name: hotelName,
-          type: hotelType,
-          stars: hotelStars,
-          score: hotelScore,
-          address: hotelAddress,
-          detailScores: hotelDetailScores,
-          comments: hotelComments,
-        };
-      }, i);
-      data.push(hotel);
-      console.log("done!!!");
-      page.close();
-    } catch (e) {
-      console.log(e);
-    }
-  }
+        const hotel = await getComments(i, j, page);
+        data.push(...hotel);
+        j += hotel.length;
+        console.log("done Page: " + pageNumber++ + " !!!");
 
-  csvWriter
-    .writeRecords(data)
-    .then(() => console.log("The CSV file was written successfully"));
+        const nextPageSelector =
+          ".bui-pagination__item--active + .bui-pagination__item > a";
+
+        const nextPage = await page.$(nextPageSelector);
+        if (nextPage == null) {
+          break;
+        }
+        await nextPage.evaluate((p) => {
+          p.click();
+        });
+      } catch (e) {
+        console.log(e);
+        if (e.name == "TimeoutError") {
+          break;
+        }
+      }
+    } while (true);
+
+    console.log("done hotel: " + i + " !!!");
+    if (data.length > 0) {
+      csvWriter
+        .writeRecords(data)
+        .then(() => console.log("The CSV file was written successfully"));
+    }
+    page.close();
+  }
 
   // other actions...
   await browser.close();
