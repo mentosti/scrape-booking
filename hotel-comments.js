@@ -43,65 +43,67 @@ const getComments = async (i, j, page) => {
   return page.evaluate(
     (i, j) => {
       const container = document.querySelectorAll(
-        "#review_list_page_container .review_list > li"
+        "#reviewCardsSection > div[data-testid='review-cards'] > div > div[data-testid='review-card']"
       );
 
       var comments = [];
 
       container.forEach((reviewer) => {
         const name = reviewer.querySelector(
-          ".bui-avatar-block__title"
+          "div[data-testid='review-avatar'] > div > div:nth-child(2) > div:first-child"
         ).textContent;
 
         const nationalityElement = reviewer.querySelector(
-          ".bui-avatar-block__subtitle"
+          "div[data-testid='review-avatar'] > div > div:nth-child(2) > div:nth-child(2) > span"
         );
         const nationality = nationalityElement
-          ? nationalityElement.textContent.match(/\n+ +\n+ +(.+)/)[1]
+          ? nationalityElement.textContent.trim()
           : "";
 
         const roomTypeElement = reviewer.querySelector(
-          ".c-review-block__room-link .bui-list__body"
+          "span[data-testid='review-room-name']"
         );
         const roomType = roomTypeElement
-          ? roomTypeElement.textContent.match(/\n+(.+)\n+/)[1]
+          ? roomTypeElement.textContent.trim()
           : "";
 
         const losElement = reviewer.querySelector(
-          "ul.c-review-block__stay-date li:first-child .bui-list__body"
+          "span[data-testid='review-num-nights']"
         );
         const los = losElement
-          ? losElement.textContent
-              .match(/\n(.+)\n\n.+\n\n/)[1]
-              .replace(" · ", "")
+          ? losElement.textContent.trim().replace(" ·", "")
           : "";
 
         const travellerTypeElement = reviewer.querySelector(
-          ".review-panel-wide__traveller_type"
+          "span[data-testid='review-traveler-type']"
         );
         const travellerType = travellerTypeElement
-          ? travellerTypeElement.textContent.match(/\n+(.+)\n+/)[1]
+          ? travellerTypeElement.textContent.trim()
           : "";
 
-        const generalReviewElement = reviewer.querySelector("h3");
+        const generalReviewElement = reviewer.querySelector(
+          "h4[data-testid='review-title']"
+        );
         const generalReview = generalReviewElement
-          ? generalReviewElement.textContent.match(/\n+(.+)\n+/)[1]
+          ? generalReviewElement.textContent.trim()
           : "";
 
-        const scoreElement = reviewer.querySelector(".bui-review-score__badge");
+        const scoreElement = reviewer.querySelector(
+          "div[data-testid='review-score']"
+        );
         const score = scoreElement
-          ? scoreElement.textContent.replaceAll(" ", "")
+          ? scoreElement.textContent.textContent.match(/\d+\.\d+/g)[1]
           : "";
 
         const dateElement = reviewer.querySelector(
-          ".c-review-block__row > .c-review-block__date"
+          "span[data-testid='review-date']"
         );
-        const date = dateElement
-          ? dateElement.textContent.match(/\nĐã đánh giá: (.+)\n/)[1]
-          : "";
+        const date = dateElement ? dateElement.textContent.trim() : "";
 
         const photo =
-          reviewer.querySelector("ul.c-review-block__photos") == null
+          reviewer.querySelector(
+            "picture[data-testid='REVIEW_THUMBNAIL_PROPERTY']"
+          ) == null
             ? "No"
             : "Yes";
 
